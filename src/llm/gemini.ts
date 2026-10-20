@@ -13,7 +13,30 @@ export class GeminiAdapter implements LLMAdapter {
     this.client = new GoogleGenerativeAI(apiKey);
   }
 
+  private async retry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await fn();
+      } catch (e) {
+        const msg = (e as Error).message ?? "";
+        const is503 = msg.includes("503") || msg.includes("Service Unavailable") || msg.includes("high demand");
+        if (is503 && i < attempts - 1) {
+          const wait = 2000 * (i + 1);
+          console.warn(`Gemini ocupado, reintentando en ${wait / 1000}s… (intento ${i + 1}/${attempts})`);
+          await new Promise((r) => setTimeout(r, wait));
+          continue;
+        }
+        throw e;
+      }
+    }
+    throw new Error("Sin respuesta tras reintentos");
+  }
+
   async send(messages: Message[], tools: ToolDefinition[]): Promise<LLMResponse> {
+    return this.retry(() => this._send(messages, tools));
+  }
+
+  private async _send(messages: Message[], tools: ToolDefinition[]): Promise<LLMResponse> {
     const model = this.client.getGenerativeModel({
       model: this.model,
       tools: tools.length ? [this.buildTools(tools)] : undefined,
