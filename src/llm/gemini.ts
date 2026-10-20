@@ -24,7 +24,7 @@ export class GeminiAdapter implements LLMAdapter {
     const history = messages.filter((m) => m.role !== "system");
 
     const chat = model.startChat({
-      systemInstruction: systemMsg?.content,
+      systemInstruction: systemMsg ? { parts: [{ text: systemMsg.content }] } : undefined,
       history: this.buildHistory(history.slice(0, -1)),
     });
 
