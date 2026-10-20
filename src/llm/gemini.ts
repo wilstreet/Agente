@@ -67,13 +67,13 @@ export class GeminiAdapter implements LLMAdapter {
 
   private convertProperties(
     props: Record<string, { type: string; description: string }>
-  ): Record<string, { type: SchemaType; description: string }> {
-    const result: Record<string, { type: SchemaType; description: string }> = {};
+  ): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(props)) {
-      result[key] = {
-        type: this.toSchemaType(val.type),
-        description: val.description ?? key,
-      };
+      const schemaType = this.toSchemaType(val.type);
+      result[key] = schemaType === SchemaType.ARRAY
+        ? { type: schemaType, description: val.description ?? key, items: { type: SchemaType.STRING } }
+        : { type: schemaType, description: val.description ?? key };
     }
     return result;
   }
