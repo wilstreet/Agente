@@ -1,0 +1,5 @@
+{"ts":"2026-10-20T17:47:02.576Z","herramienta":"leer_solicitud","ok":true,"resumen":"0 campos, 2 soportes"}
+{"ts":"2026-10-20T17:47:02.580Z","herramienta":"mapear_campos","ok":true,"resumen":"llenos:0 faltantes:0 confirmacion:0"}
+{"ts":"2026-10-20T17:47:02.585Z","herramienta":"generar_formulario","ok":true,"resumen":"portal — valores-portal.md generado"}
+{"ts":"2026-10-20T17:47:02.602Z","herramienta":"armar_paquete","ok":true,"resumen":"listo_para_firma:false bloqueos:1"}
+{"ts":"2026-10-20T17:47:02.605Z","herramienta":"simular_envio","ok":true,"resumen":"ENVIO-SIMULADO.md generado"}

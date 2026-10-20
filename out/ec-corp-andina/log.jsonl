@@ -1,0 +1,5 @@
+{"ts":"2026-10-20T17:47:02.453Z","herramienta":"leer_solicitud","ok":true,"resumen":"15 campos, 5 soportes"}
+{"ts":"2026-10-20T17:47:02.457Z","herramienta":"mapear_campos","ok":true,"resumen":"llenos:13 faltantes:1 confirmacion:1"}
+{"ts":"2026-10-20T17:47:02.510Z","herramienta":"generar_formulario","ok":true,"resumen":"pdf generado: c:\\Users\\wilmerlondono\\Desktop\\Reto_perXia\\retos-ia-periferia-it-group 1 (1)\\Retos IA Periferia IT Group\\reto-01\\out\\ec-corp-andina\\formulario.pdf"}
+{"ts":"2026-10-20T17:47:02.530Z","herramienta":"armar_paquete","ok":true,"resumen":"listo_para_firma:false bloqueos:2"}
+{"ts":"2026-10-20T17:47:02.535Z","herramienta":"simular_envio","ok":true,"resumen":"ENVIO-SIMULADO.md generado"}

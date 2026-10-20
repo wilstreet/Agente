@@ -1,0 +1,5 @@
+{"ts":"2026-10-20T17:47:02.376Z","herramienta":"leer_solicitud","ok":true,"resumen":"17 campos, 4 soportes"}
+{"ts":"2026-10-20T17:47:02.378Z","herramienta":"mapear_campos","ok":true,"resumen":"llenos:17 faltantes:0 confirmacion:0"}
+{"ts":"2026-10-20T17:47:02.421Z","herramienta":"generar_formulario","ok":true,"resumen":"xlsx generado: c:\\Users\\wilmerlondono\\Desktop\\Reto_perXia\\retos-ia-periferia-it-group 1 (1)\\Retos IA Periferia IT Group\\reto-01\\out\\co-industrias-delta\\formulario.xlsx"}
+{"ts":"2026-10-20T17:47:02.447Z","herramienta":"armar_paquete","ok":true,"resumen":"listo_para_firma:false bloqueos:1"}
+{"ts":"2026-10-20T17:47:02.450Z","herramienta":"simular_envio","ok":true,"resumen":"ENVIO-SIMULADO.md generado"}

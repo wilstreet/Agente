@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agente Registro Proveedor — Periferia IT Group</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
+  header { background: #1a1a2e; color: white; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1rem; font-weight: 600; }
+  #status { font-size: 0.75rem; color: #a0aec0; margin-left: auto; }
+  #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; line-height: 1.5; font-size: 0.9rem; white-space: pre-wrap; }
+  .msg.user { background: #3182ce; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .msg.assistant { background: white; color: #1a202c; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .msg.tool-call { background: #ebf8ff; border: 1px solid #bee3f8; color: #2b6cb0; font-size: 0.8rem; font-family: monospace; align-self: flex-start; max-width: 90%; }
+  .msg.confirmation { background: #fffbeb; border: 2px solid #f6ad55; color: #744210; align-self: flex-start; }
+  .msg.error { background: #fff5f5; border: 1px solid #fc8181; color: #c53030; align-self: flex-start; }
+  .tool-header { font-weight: bold; margin-bottom: 4px; }
+  .thinking { color: #718096; font-style: italic; font-size: 0.85rem; align-self: flex-start; }
+  #input-area { padding: 12px 16px; background: white; border-top: 1px solid #e2e8f0; display: flex; gap: 8px; }
+  #input { flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; outline: none; resize: none; height: 44px; }
+  #input:focus { border-color: #3182ce; }
+  #send { padding: 10px 20px; background: #3182ce; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+  #send:disabled { background: #a0aec0; cursor: not-allowed; }
+  .quick-btns { padding: 8px 16px; background: white; border-top: 1px solid #e2e8f0; display: flex; gap: 8px; flex-wrap: wrap; }
+  .quick-btn { padding: 6px 12px; background: #edf2f7; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+  .quick-btn:hover { background: #e2e8f0; }
+</style>
+</head>
+<body>
+<header>
+  <div>🤖</div>
+  <h1>Agente Registro como Proveedor — Periferia IT Group</h1>
+  <span id="status">conectando…</span>
+</header>
+<div id="chat"></div>
+<div class="quick-btns">
+  <button class="quick-btn" onclick="quickSend('Procesa el caso co-industrias-delta')">co-industrias-delta</button>
+  <button class="quick-btn" onclick="quickSend('Procesa el caso ec-corp-andina')">ec-corp-andina</button>
+  <button class="quick-btn" onclick="quickSend('Procesa el caso hn-agroexport-sula')">hn-agroexport-sula</button>
+  <button class="quick-btn" onclick="quickSend('Procesa el caso pa-logistica-istmo')">pa-logistica-istmo</button>
+</div>
+<div id="input-area">
+  <textarea id="input" placeholder="Escribe un mensaje… (Enter para enviar)" rows="1"></textarea>
+  <button id="send" onclick="sendMessage()">Enviar</button>
+</div>
+
+<script>
+const sessionId = 'session-' + Math.random().toString(36).slice(2);
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+const statusEl = document.getElementById('status');
+
+fetch('/api/health').then(r => r.json()).then(d => {
+  statusEl.textContent = d.ok ? `${d.provider} / ${d.model}` : 'error';
+}).catch(() => { statusEl.textContent = 'sin conexión'; });
+
+function addMsg(text, type) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + type;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function addToolCall(name, args, result) {
+  const div = document.createElement('div');
+  div.className = 'msg tool-call';
+  let parsed;
+  try { parsed = JSON.parse(result); } catch { parsed = { raw: result }; }
+  const ok = parsed?.ok !== false;
+  div.innerHTML = `<div class="tool-header">🔧 ${name} ${ok ? '✅' : '❌'}</div>` +
+    `<div>args: ${JSON.stringify(args)}</div>` +
+    `<div>resultado: ${ok ? (parsed?.data ? JSON.stringify(parsed.data).slice(0, 200) : 'ok') : parsed?.error}</div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  sendBtn.disabled = true;
+  addMsg(text, 'user');
+  const thinking = addMsg('⏳ pensando…', 'thinking');
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, message: text })
+    });
+    const data = await res.json();
+    thinking.remove();
+
+    if (!res.ok) { addMsg('Error: ' + (data.error ?? 'desconocido'), 'error'); return; }
+
+    for (const tc of (data.toolCalls ?? [])) {
+      addToolCall(tc.name, tc.args, tc.result);
+    }
+
+    const msgType = data.needsConfirmation ? 'confirmation' : 'assistant';
+    addMsg(data.reply, msgType);
+  } catch (e) {
+    thinking.remove();
+    addMsg('Error de red: ' + e.message, 'error');
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+function quickSend(text) { input.value = text; sendMessage(); }
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+// Welcome message
+addMsg('Hola 👋 Soy el agente de registro como proveedor de Periferia IT Group. Dime el caso que quieres procesar (ej: "Procesa el caso ec-corp-andina") o usa los botones de acceso rápido.', 'assistant');
+</script>
+</body>
+</html>

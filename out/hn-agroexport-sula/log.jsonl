@@ -1,0 +1,5 @@
+{"ts":"2026-10-20T17:47:02.537Z","herramienta":"leer_solicitud","ok":true,"resumen":"11 campos, 3 soportes"}
+{"ts":"2026-10-20T17:47:02.539Z","herramienta":"mapear_campos","ok":true,"resumen":"llenos:9 faltantes:1 confirmacion:1"}
+{"ts":"2026-10-20T17:47:02.550Z","herramienta":"generar_formulario","ok":true,"resumen":"xlsx generado: c:\\Users\\wilmerlondono\\Desktop\\Reto_perXia\\retos-ia-periferia-it-group 1 (1)\\Retos IA Periferia IT Group\\reto-01\\out\\hn-agroexport-sula\\formulario.xlsx"}
+{"ts":"2026-10-20T17:47:02.568Z","herramienta":"armar_paquete","ok":true,"resumen":"listo_para_firma:false bloqueos:2"}
+{"ts":"2026-10-20T17:47:02.572Z","herramienta":"simular_envio","ok":true,"resumen":"ENVIO-SIMULADO.md generado"}
