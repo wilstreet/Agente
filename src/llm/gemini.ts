@@ -13,16 +13,19 @@ export class GeminiAdapter implements LLMAdapter {
     this.client = new GoogleGenerativeAI(apiKey);
   }
 
-  private async retry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  private async retry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> {
     for (let i = 0; i < attempts; i++) {
       try {
         return await fn();
       } catch (e) {
         const msg = (e as Error).message ?? "";
         const is503 = msg.includes("503") || msg.includes("Service Unavailable") || msg.includes("high demand");
-        if (is503 && i < attempts - 1) {
-          const wait = 2000 * (i + 1);
-          console.warn(`Gemini ocupado, reintentando en ${wait / 1000}s… (intento ${i + 1}/${attempts})`);
+        const is429 = msg.includes("429") || msg.includes("Too Many Requests") || msg.includes("quota");
+        if ((is503 || is429) && i < attempts - 1) {
+          // Extract retryDelay from error message if present (e.g. "24.729s")
+          const match = msg.match(/retry(?:Delay)?[":\s]+"?(\d+(?:\.\d+)?)s/i);
+          const wait = match ? Math.ceil(parseFloat(match[1])) * 1000 : 2000 * (i + 1);
+          console.warn(`Gemini límite alcanzado, reintentando en ${wait / 1000}s… (intento ${i + 1}/${attempts})`);
           await new Promise((r) => setTimeout(r, wait));
           continue;
         }
