@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --env-file=.env --import tsx/esm --watch src/server.ts",
-    "start": "node --env-file=.env --import tsx/esm src/server.ts",
+    "start": "node --import tsx/esm src/server.ts",
     "demo": "node --env-file=.env --import tsx/esm demo.ts"
   },
   "dependencies": {

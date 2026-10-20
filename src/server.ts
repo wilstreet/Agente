@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { z } from "zod";
-import { OpenAIAdapter } from "./llm/openai.ts";
+import { GeminiAdapter } from "./llm/gemini.ts";
 import type { LLMAdapter, Message, ToolDefinition } from "./llm/adapter.ts";
 import * as tools from "./tools/proveedor.ts";
 
@@ -138,7 +138,7 @@ async function runAgentLoop(
 
 let llm: LLMAdapter;
 try {
-  llm = new OpenAIAdapter();
+  llm = new GeminiAdapter();
 } catch (e) {
   console.error("Error inicializando LLM:", (e as Error).message);
   process.exit(1);
