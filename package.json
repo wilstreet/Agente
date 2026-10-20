@@ -8,6 +8,7 @@
     "demo": "node --env-file=.env --import tsx/esm demo.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "exceljs": "^4.4.0",
     "openai": "^4.52.0",
     "pdfkit": "^0.15.0",
