@@ -8,7 +8,7 @@ npm install
 
 # 2. Configurar variables de entorno
 cp .env.example .env
-# Edita .env y agrega tu OPENAI_API_KEY
+# Edita .env y agrega tu GEMINI_API_KEY
 
 # 3. Levantar el servidor (front + backend en un comando)
 npm run dev
@@ -31,7 +31,7 @@ npm run dev
 npx tsx demo.ts
 ```
 
-Ejecuta todas las herramientas directamente sobre los 4 casos de fixtures e imprime un resumen. No requiere clave de OpenAI si se comenta la inicialización del LLM.
+Ejecuta todas las herramientas directamente sobre los 4 casos de fixtures e imprime un resumen. No requiere clave de API.
 
 ## API
 
