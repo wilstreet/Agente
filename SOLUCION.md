@@ -1,6 +1,6 @@
 # SOLUCION.md — Agente Registro como Proveedor
 
-## 1. Problema en una frase
+## 1. Problema
 
 El área administrativa de Periferia transcribe manualmente los mismos datos en formularios de registro como proveedor para cada cliente, con riesgo de error y demoras que retrasan la facturación.
 
@@ -9,129 +9,85 @@ El área administrativa de Periferia transcribe manualmente los mismos datos en 
 ## 2. Arquitectura
 
 ```
-┌──────────────────┐  HTTP POST /api/chat   ┌──────────────────────────────────────────┐
-│  web/index.html  │ ─────────────────────▶ │  src/server.ts                           │
-│  - historial     │ ◀───────────────────── │  - ciclo del agente (runAgentLoop)       │
-│  - tool calls    │                        │  - validación zod de args                │
-│  - confirmación  │                        │  - sesiones en Map<sessionId, Message[]> │
-└──────────────────┘                        └──────────┬───────────────────────────────┘
-                                                       │
-                              ┌────────────────────────┼────────────────────────┐
-                              ▼                        ▼                        ▼
-                    src/llm/openai.ts       src/tools/proveedor.ts      agent/prompt.md
-                    (adaptador OpenAI)      (5 herramientas)            (system prompt)
-                              │                        │
-                              ▼                        ▼
-                         OpenAI API          fixtures/ (solo lectura)
-                                             out/<caso>/ (escritura)
+web/index.html  →  src/server.ts  →  src/tools/proveedor.ts  →  fixtures/ (lectura)
+                                                               →  out/<caso>/  (escritura)
+                        ↓
+                 src/llm/gemini.ts  →  Gemini API
 ```
 
-- **Comportamiento**: `agent/prompt.md` — reglas del agente, nunca en código.
-- **Conocimiento**: `src/knowledge/registro-proveedor.md` — estructura de datos y reglas de negocio.
-- **Ejecución**: `src/tools/proveedor.ts` — única fuente de verdad de valores.
+- `agent/prompt.md` — comportamiento del agente
+- `src/knowledge/registro-proveedor.md` — reglas de negocio
+- `src/tools/proveedor.ts` — única fuente de valores (nunca el modelo)
 
 ---
 
 ## 3. Ciclo del agente
 
-Implementado en `runAgentLoop` en `src/server.ts`:
-
-1. Se agrega el mensaje del usuario al historial de la sesión.
-2. Se llama al LLM con el historial completo y las definiciones de herramientas.
-3. Si el modelo devuelve `tool_calls`, se validan los args con zod, se ejecuta cada herramienta y se agrega el resultado al historial como mensaje `role: "tool"`.
-4. Se repite desde el paso 2 hasta que el modelo devuelve texto sin tool_calls o se alcanza `MAX_ITERATIONS` (default 25).
-5. Si la respuesta contiene una pregunta de confirmación, se marca `needsConfirmation: true` y el front la resalta visualmente.
-6. La confirmación humana se implementa por diseño: `proveedor_simular_envio` requiere `confirmado: true` en los args, y el prompt instruye al modelo a solo pasar `true` si el usuario confirmó en el turno anterior.
+1. Mensaje del usuario → se agrega al historial de sesión
+2. Se llama a Gemini con historial + definiciones de herramientas
+3. Si el modelo devuelve tool calls → se validan con zod, se ejecutan, resultado al historial
+4. Se repite hasta que el modelo responde en texto o se alcanza `MAX_ITERATIONS`
+5. Si la respuesta contiene confirmación pendiente → `needsConfirmation: true` y el front lo resalta
+6. `proveedor_simular_envio` requiere `confirmado: true` en los args — el modelo solo lo pasa si el usuario confirmó explícitamente
 
 ---
 
-## 4. Elección del modelo
+## 4. Modelo
 
-- **Proveedor**: OpenAI
-- **Modelo**: `gpt-4o-mini`
-- **Por qué**: Soporte nativo de function calling, bajo costo, latencia aceptable para uso administrativo.
-- **Costo estimado por caso**: ~2000 tokens de entrada + ~500 de salida × 4 iteraciones ≈ 10 000 tokens ≈ USD 0.002 por caso con gpt-4o-mini.
-- **Cambiar de proveedor**: solo se necesita implementar la interfaz `LLMAdapter` en un nuevo archivo `src/llm/<proveedor>.ts` y cambiar la importación en `server.ts`. El ciclo del agente no se toca.
-
----
-
-## 5. Diseño del portal web (P2)
-
-### Estrategia
-Automatización con navegador controlado (Playwright/Puppeteer) orquestado por el agente como herramienta adicional `proveedor_llenar_portal`.
-
-### Flujo
-1. El agente prepara los valores con `proveedor_mapear_campos` (igual que hoy).
-2. La herramienta `proveedor_llenar_portal` recibe los valores y abre el portal con Playwright.
-3. El agente navega campo por campo usando selectores configurados por portal (mapeados en un archivo `portales/<cliente>.json`).
-4. Ante CAPTCHA o MFA: la herramienta pausa y devuelve `{ ok: false, error: "requiere_intervencion_humana", url_actual }`. El humano completa ese paso y confirma para continuar.
-5. El clic en "Enviar" siempre es humano (regla RN4).
-
-### Credenciales
-- Nunca en el repositorio, nunca en el prompt, nunca en logs.
-- Se leen de variables de entorno con prefijo `PORTAL_<CLIENTE>_USER` y `PORTAL_<CLIENTE>_PASS`.
-- En producción: AWS Secrets Manager o HashiCorp Vault, con rotación automática.
-- El ingreso de credenciales al gestor de secretos es responsabilidad del administrador de sistemas, no del agente.
-
-### Límites
-- Cambios de layout rompen los selectores → requiere mantenimiento de `portales/<cliente>.json`.
-- CAPTCHA de imagen → intervención humana obligatoria.
-- MFA → el humano ingresa el código; el agente espera confirmación.
+- **Proveedor**: Google Gemini — capa gratuita (5 req/min)
+- **Modelo**: `gemini-2.5-flash`
+- **Costo por caso**: $0 en capa gratuita
+- **Rate limit**: retry automático extrayendo el `retryDelay` del error 429, hasta 4 intentos. También maneja 503 con backoff.
 
 ---
 
-## 6. Decisiones y trade-offs
+## 5. Diseño portal web (P2)
 
-| Decisión | Alternativa descartada | Por qué se eligió esta |
+No implementado. El agente genera `valores-portal.md` con los valores listos para copiar.
+
+Para producción: automatización con Playwright como herramienta adicional `proveedor_llenar_portal`. Ante CAPTCHA o MFA la herramienta pausa y devuelve `requiere_intervencion_humana`. El clic en "Enviar" siempre es humano. Credenciales en variables de entorno del servidor, nunca en el repo ni en logs.
+
+---
+
+## 6. Decisiones
+
+| Decisión | Alternativa descartada | Por qué |
 |---|---|---|
-| Servidor HTTP nativo de Node sin framework | Express / Fastify | Cero dependencias extra, suficiente para el reto. En producción usaría Fastify por validación y plugins. |
-| Sesiones en `Map` en memoria | SQLite / Redis | El PRD dice "sin base de datos". En producción se necesita persistencia entre reinicios. |
-| Un solo archivo de herramientas `proveedor.ts` | Un archivo por herramienta | Más simple para el reto; en producción se separarían para facilitar pruebas unitarias. |
-| PDF generado con PDFKit (no AcroForm) | pdf-lib para rellenar AcroForm | El PRD lo permite explícitamente y PDFKit es más simple. En producción se usaría pdf-lib si el cliente entrega el PDF original. |
-| OpenAI gpt-4o-mini | Claude Haiku / Gemini Flash | Mejor soporte de function calling documentado, SDK oficial en TypeScript, costo bajo. |
+| HTTP nativo de Node | Express / Fastify | Sin dependencias extra, suficiente para el reto |
+| Sesiones en `Map` en memoria | SQLite / Redis | PRD no requiere persistencia entre reinicios |
+| PDFKit (PDF generado) | pdf-lib AcroForm | PRD lo permite; más simple sin el PDF original del cliente |
+| Gemini capa gratuita | OpenAI gpt-4o-mini | Sin costo, sin tarjeta de crédito requerida |
 
 ---
 
 ## 7. Supuestos
 
-1. Los fixtures representan la variabilidad real; en producción habrá plantillas con más campos ambiguos.
-2. El repositorio maestro está actualizado; en producción se necesita un proceso de actualización.
-3. "Confirmación explícita" significa que el mensaje del usuario en el turno anterior contiene una afirmación clara (sí, confirmo, procede, envía).
-4. El campo `parafiscales` con `vigencia_hasta: 2026-08-31` se considera vencido si la fecha de ejecución es posterior a esa fecha.
-5. El formato `portal` del caso `pa-logistica-istmo` produce `valores-portal.md` y el agente informa que el formato no está soportado para generación automática.
+- Los fixtures representan la variabilidad real de los clientes
+- El repositorio maestro está actualizado
+- "Confirmación explícita" = el usuario escribe sí / confirmo / procede en el turno anterior
+- `parafiscales` con `vigencia_hasta: 2026-08-31` se considera vencido si la ejecución es posterior
 
 ---
 
-## 8. Cobertura de historias de usuario
+## 8. Cobertura
 
-| HU | Estado | Notas |
-|---|---|---|
-| HU-1 Leer solicitud | ✅ Hecho | `proveedor_leer_solicitud` lee solicitud.json y plantilla según formato |
-| HU-2 Mapear campos | ✅ Hecho | Glosario + regla RN1 por país; nunca inventa valores |
-| HU-3 Generar formulario | ✅ Hecho | xlsx (ExcelJS), pdf (PDFKit), portal (valores-portal.md) |
-| HU-4 Armar paquete | ✅ Hecho | checklist.md, borrador-correo.md, copia de soportes, bloqueos |
-| HU-5 Manejo de errores | ✅ Hecho | Todas las herramientas devuelven `{ ok, data }` o `{ ok: false, error }` |
+| Historia | Estado |
+|---|---|
+| HU-1 Leer solicitud | ✅ |
+| HU-2 Mapear campos | ✅ |
+| HU-3 Generar formulario (xlsx, pdf, portal) | ✅ |
+| HU-4 Armar paquete | ✅ |
+| HU-5 Manejo de errores | ✅ |
 
-Para producción falta: pruebas unitarias por herramienta, pruebas de integración del ciclo, manejo de sesiones persistentes, autenticación básica del endpoint.
-
----
-
-## 9. Uso de IA
-
-| Asistente | Tareas | Qué se descartó |
-|---|---|---|
-| Amazon Q (este chat) | Generación del código completo del proyecto a partir del PRD y los fixtures | Sugerencias de usar frameworks pesados (Express, Prisma) — se prefirió mínimo de dependencias |
-
-Todo el código fue revisado línea por línea para asegurar que cumple el PRD. Las decisiones de arquitectura (separación prompt/conocimiento/ejecución, contrato `{ ok, data }`, ciclo del agente) son propias del diseño del reto.
+Pendiente para producción: pruebas unitarias, sesiones persistentes, autenticación del endpoint.
 
 ---
 
-## 10. Riesgos en producción
+## 9. Riesgos
 
 | Riesgo | Mitigación |
 |---|---|
-| El modelo "completa" un campo faltante con valor plausible | Las herramientas son la única fuente; el prompt lo prohíbe; en producción se agregaría un validador post-respuesta que detecte valores no trazables |
-| Clave de OpenAI expuesta en logs | El servidor sanitiza errores con regex antes de responder; en producción se usaría un logger estructurado con redacción automática de secretos |
-| Sesiones en memoria se pierden al reiniciar | En producción: persistencia en Redis o archivo JSONL por sesión |
-| Plantillas de clientes cambian sin aviso | El glosario y las plantillas son archivos editables sin tocar código; en producción se versionarían |
-| Soporte vencido bloquea el flujo en producción | Alertas automáticas de vencimiento próximo (30 días antes) para que el área administrativa renueve a tiempo |
+| Modelo inventa un valor faltante | Las herramientas son la única fuente; el prompt lo prohíbe |
+| Rate limit 5 req/min en capa gratuita | Retry automático con `retryDelay` del error 429; en producción usar plan de pago |
+| Sesiones se pierden al reiniciar | En producción: Redis o archivos JSONL por sesión |
+| Soportes vencen sin aviso | Alertas de vencimiento próximo (30 días antes) |

@@ -19,8 +19,8 @@ npm run dev
 
 | Variable | Descripción | Ejemplo |
 |---|---|---|
-| `OPENAI_API_KEY` | Clave de OpenAI | `sk-...` |
-| `OPENAI_MODEL` | Modelo a usar | `gpt-4o-mini` |
+| `GEMINI_API_KEY` | Clave de Google AI Studio | `AIza...` |
+| `GEMINI_MODEL` | Modelo a usar | `gemini-2.5-flash` |
 | `MAX_ITERATIONS` | Tope de iteraciones por turno | `25` |
 | `MAX_TOKENS_PER_SESSION` | Tope de tokens por sesión | `50000` |
 | `PORT` | Puerto del servidor | `3000` |
